@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wealthicon Horizon - 專業金融模擬器</title>
+    <!-- 加入 PWA 支援 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0a0c10;
+            color: #e2e8f0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+        }
+        .gold-gradient-text {
+            background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .input-field {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #b38728;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(179, 135, 40, 0.2);
+        }
+        .profit-row {
+            background: rgba(45, 212, 191, 0.05);
+        }
+        .highlight-text {
+            color: #2dd4bf;
+        }
+        .negative-text {
+            color: #fb7185;
+        }
+        .accordion-content {
+            transition: max-height 0.3s ease-out;
+            max-height: 0;
+            overflow: hidden;
+        }
+        .accordion-content.active {
+            max-height: 500px;
+        }
+        /* 自定義滾動條 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0c10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 10px;
+        }
+        /* Radio Button Style */
+        .currency-radio:checked + label {
+            background-color: #b38728;
+            color: white;
+            border-color: #b38728;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen">
+    <div class="max-w-7xl mx-auto pb-12">
+        <!-- 標題區域 -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-end gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold gold-gradient-text tracking-tight mb-2">Premium Financing</h1>
+                <p class="text-slate-400 text-sm">Wealth Management & Financing Simulation Tool: Wealthicon Horizon</p>
+            </div>
+            <div class="flex flex-col items-end gap-2">
+                <div class="text-right">
+                    <div class="text-xs text-slate-500 uppercase tracking-widest mb-1">Display Currency</div>
+                    <div class="text-xl font-semibold text-white" id="headerCurrencyDisplay">USD <span class="text-slate-500 text-sm font-normal">/ 美元</span></div>
+                </div>
+                <button onclick="resetData()" class="text-xs text-slate-500 hover:text-amber-500 underline transition-colors">重置所有設定</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <!-- 左側輸入面板 -->
+            <aside class="lg:col-span-1 space-y-6">
+                
+                <!-- 貨幣設定 (新功能) -->
+                <div class="glass-card p-5 border-amber-500/20 bg-amber-500/5">
+                    <h2 class="text-sm font-semibold mb-3 flex items-center gap-2 text-amber-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        貨幣顯示設定
+                    </h2>
+                    <div class="flex gap-2 mb-3">
+                        <div class="flex-1">
+                            <input type="radio" name="currency" id="currUSD" value="USD" class="hidden currency-radio" checked onchange="updateCurrencyMode()">
+                            <label for="currUSD" class="block text-center py-2 rounded-lg border border-slate-600 text-slate-400 text-xs cursor-pointer transition-all hover:border-slate-500">USD 美元</label>
+                        </div>
+                        <div class="flex-1">
+                            <input type="radio" name="currency" id="currHKD" value="HKD" class="hidden currency-radio" onchange="updateCurrencyMode()">
+                            <label for="currHKD" class="block text-center py-2 rounded-lg border border-slate-600 text-slate-400 text-xs cursor-pointer transition-all hover:border-slate-500">HKD 港幣</label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1 ml-1">USD/HKD 匯率</label>
+                        <input type="number" id="exchangeRate" value="7.8" step="0.01" class="input-field w-full rounded-lg px-3 py-2 text-sm text-right">
+                    </div>
+                </div>
+
+                <!-- 基本參數 -->
+                <div class="glass-card p-5">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2 text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-500"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        方案參數 (USD)
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 ml-1">基本計劃保費 (USD)</label>
+                            <input type="number" id="basicPremium" value="400000" step="10000" class="input-field w-full rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 ml-1">首日退保價值 (80% 固定)</label>
+                            <input type="number" id="day1SV" value="320000" class="input-field w-full rounded-lg px-3 py-2 text-sm bg-slate-900/50 text-slate-500 cursor-not-allowed" readonly>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1 ml-1">保費折扣 (%)</label>
+                                <input type="number" id="premiumDiscount" value="5" step="0.1" class="input-field w-full rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1 ml-1">實現率 (%)</label>
+                                <input type="number" id="fulfillmentRatio" value="100" step="1" class="input-field w-full rounded-lg px-3 py-2 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 ml-1">融資成數 LTV (%)</label>
+                            <input type="number" id="ltvRatio" value="90" step="1" class="input-field w-full rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1 ml-1">基準融資利率 (%)</label>
+                            <input type="number" id="baseFinancingRate" value="3.2" step="0.01" class="input-field w-full rounded-lg px-3 py-2 text-sm border-amber-500/30">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 進階設定：年度利率 -->
+                <div class="glass-card overflow-hidden">
+                    <button id="toggleAdvanced" class="w-full px-5 py-3 flex justify-between items-center bg-slate-800/50 hover:bg-slate-800 transition-colors">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-amber-500">進階設定：每年利率調整</span>
+                        <svg id="arrowIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 transform transition-transform duration-300"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div id="advancedContent" class="accordion-content bg-slate-900/30">
+                        <div class="p-4 grid grid-cols-2 gap-2" id="yearlyRatesContainer">
+                            <!-- JS將在此生成1-10年的輸入框 -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- 主數據與圖表面板 -->
+            <main class="lg:col-span-3 space-y-6">
+                <!-- 核心指標 -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card p-5 border-l-4 border-amber-500 flex flex-col justify-between">
+                        <div class="text-xs text-slate-400 uppercase">Financing Amount 融資金額</div>
+                        <div class="text-2xl font-bold text-white mt-1" id="displayFinancing">0</div>
+                    </div>
+                    <div class="glass-card p-5 border-l-4 border-blue-500 flex flex-col justify-between">
+                        <div class="text-xs text-slate-400 uppercase">Initial Outlay 初始投入</div>
+                        <div class="text-2xl font-bold text-white mt-1" id="displayOutlay">0</div>
+                    </div>
+                    <div class="glass-card p-5 border-l-4 border-teal-500 flex flex-col justify-between">
+                        <div class="text-xs text-slate-400 uppercase">Year 10 Net Profit 十年淨利</div>
+                        <div class="text-2xl font-bold highlight-text mt-1" id="displayYear10Profit">0</div>
+                    </div>
+                </div>
+
+                <!-- 圖表區域 -->
+                <div class="glass-card p-4 h-80 relative">
+                    <canvas id="wealthChart"></canvas>
+                </div>
+
+                <!-- 數據表格 -->
+                <div class="glass-card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[900px]">
+                            <thead>
+                                <tr class="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-wider">
+                                    <th class="px-3 py-3 font-semibold sticky left-0 bg-[#161b22] z-10 border-r border-slate-700">年度</th>
+                                    <th class="px-3 py-3 font-semibold text-right text-teal-500/80">融資利率</th>
+                                    <th class="px-3 py-3 font-semibold text-right">利息成本<br><span class="text-[10px] text-slate-500 normal-case">(年 / 月)</span></th>
+                                    <th class="px-3 py-3 font-semibold text-right">總退保價值</th>
+                                    <th class="px-3 py-3 font-semibold text-right border-l border-slate-700/50">TIRR<br><span class="text-[10px] text-slate-500">(無融資)</span></th>
+                                    <th class="px-3 py-3 font-semibold text-right text-amber-500">TIRR<br><span class="text-[10px] text-amber-500/70">(有融資)</span></th>
+                                    <th class="px-3 py-3 font-semibold text-right text-amber-300">可提取金額</th>
+                                    <th class="px-3 py-3 font-semibold text-right">淨利潤</th>
+                                    <th class="px-3 py-3 font-semibold text-right">盈利率 %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody" class="text-sm">
+                                <!-- 由 JS 動態生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const inputs = ['basicPremium', 'premiumDiscount', 'ltvRatio', 'baseFinancingRate', 'fulfillmentRatio', 'exchangeRate'];
+        let wealthChart = null;
+        let yearlyRates = new Array(11).fill(3.2); 
+        let currentCurrency = 'USD'; // 'USD' or 'HKD'
+
+        // 產品真實數據比率表 (SV / Basic Premium)
+        const svRatios = [
+            0, 0.8000, 0.8380, 0.95722, 1.03467, 1.18935, 1.248255, 1.312395, 1.391765, 1.52237, 1.651995
+        ];
+
+        function getCurrencyRate() {
+            if (currentCurrency === 'HKD') {
+                return parseFloat(document.getElementById('exchangeRate').value) || 7.8;
+            }
+            return 1;
+        }
+
+        function formatCurrency(value) {
+            const rate = getCurrencyRate();
+            const convertedValue = value * rate;
+            const currencyCode = currentCurrency === 'HKD' ? 'HKD' : 'USD';
+            
+            return new Intl.NumberFormat('en-US', { 
+                style: 'currency', 
+                currency: currencyCode, 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 0 
+            }).format(convertedValue);
+        }
+
+        function formatPercent(value) {
+            return (value * 100).toFixed(2) + '%';
+        }
+
+        function calculateIRR(cashFlows, guess = 0.1) {
+            if (cashFlows.length === 2) {
+                if (cashFlows[0] === 0) return 0;
+                return (cashFlows[1] / -cashFlows[0]) - 1;
+            }
+
+            const maxIter = 1000;
+            const tol = 0.000001;
+            let rate = guess;
+
+            for (let i = 0; i < maxIter; i++) {
+                let npv = 0;
+                let dNpv = 0;
+                
+                for (let t = 0; t < cashFlows.length; t++) {
+                    npv += cashFlows[t] / Math.pow(1 + rate, t);
+                    dNpv -= t * cashFlows[t] / Math.pow(1 + rate, t + 1);
+                }
+
+                if (Math.abs(dNpv) < tol) break; 
+                
+                let newRate = rate - npv / dNpv;
+                if (newRate <= -1) newRate = -0.9999; 
+
+                if (Math.abs(newRate - rate) < tol) return newRate;
+                rate = newRate;
+            }
+            return rate;
+        }
+
+        function updateCurrencyMode() {
+            const usdRadio = document.getElementById('currUSD');
+            const hkdRadio = document.getElementById('currHKD');
+            
+            if (hkdRadio.checked) {
+                currentCurrency = 'HKD';
+                document.getElementById('headerCurrencyDisplay').innerHTML = 'HKD <span class="text-slate-500 text-sm font-normal">/ 港幣</span>';
+            } else {
+                currentCurrency = 'USD';
+                document.getElementById('headerCurrencyDisplay').innerHTML = 'USD <span class="text-slate-500 text-sm font-normal">/ 美元</span>';
+            }
+            calculate();
+        }
+
+        // --- Local Storage 功能 ---
+        function saveState() {
+            const state = {
+                inputs: {},
+                yearlyRates: yearlyRates,
+                currency: currentCurrency
+            };
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) state.inputs[id] = el.value;
+            });
+            localStorage.setItem('wealthicon_sim_state', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('wealthicon_sim_state');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    if (state.inputs) {
+                        inputs.forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el && state.inputs[id] !== undefined) el.value = state.inputs[id];
+                        });
+                    }
+                    if (state.yearlyRates) {
+                        yearlyRates = state.yearlyRates;
+                    }
+                    if (state.currency) {
+                        currentCurrency = state.currency;
+                        if(currentCurrency === 'HKD') document.getElementById('currHKD').checked = true;
+                        else document.getElementById('currUSD').checked = true;
+                        updateCurrencyMode(); // Update header
+                    }
+                } catch (e) { console.error("Load state failed", e); }
+            }
+        }
+
+        function resetData() {
+            if(confirm("確定要重置所有設定為預設值嗎？")) {
+                localStorage.removeItem('wealthicon_sim_state');
+                location.reload();
+            }
+        }
+
+        function initYearlyRateInputs() {
+            const container = document.getElementById('yearlyRatesContainer');
+            container.innerHTML = '';
+            const saved = localStorage.getItem('wealthicon_sim_state');
+            const baseRate = parseFloat(document.getElementById('baseFinancingRate').value);
+
+            for (let i = 1; i <= 10; i++) {
+                if (!saved) yearlyRates[i] = baseRate;
+                
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-2';
+                div.innerHTML = `
+                    <span class="text-[10px] text-slate-500 w-8">Y${i}</span>
+                    <input type="number" 
+                        id="rate_y${i}" 
+                        value="${yearlyRates[i]}" 
+                        step="0.1" 
+                        onchange="updateSpecificRate(${i}, this.value)"
+                        class="input-field w-full rounded px-2 py-1 text-xs text-right bg-slate-800 border-none focus:ring-1 focus:ring-amber-500">
+                    <span class="text-[10px] text-slate-600">%</span>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        window.updateSpecificRate = function(year, value) {
+            yearlyRates[year] = parseFloat(value);
+            calculate();
+        };
+
+        document.getElementById('baseFinancingRate').addEventListener('change', function(e) {
+            const val = parseFloat(e.target.value);
+            for (let i = 1; i <= 10; i++) {
+                yearlyRates[i] = val;
+                const el = document.getElementById(`rate_y${i}`);
+                if(el) el.value = val;
+            }
+            calculate();
+        });
+
+        const toggleBtn = document.getElementById('toggleAdvanced');
+        const advancedContent = document.getElementById('advancedContent');
+        const arrowIcon = document.getElementById('arrowIcon');
+        
+        toggleBtn.addEventListener('click', () => {
+            const isActive = advancedContent.classList.toggle('active');
+            arrowIcon.style.transform = isActive ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+
+        function calculate() {
+            saveState();
+
+            const basicPremium = parseFloat(document.getElementById('basicPremium').value) || 0;
+            const day1SV = basicPremium * 0.8;
+            document.getElementById('day1SV').value = Math.round(day1SV);
+            
+            const premiumDiscount = parseFloat(document.getElementById('premiumDiscount').value) / 100 || 0;
+            const ltvRatio = parseFloat(document.getElementById('ltvRatio').value) / 100 || 0;
+            const fulfillment = parseFloat(document.getElementById('fulfillmentRatio').value) / 100 || 0;
+
+            const financingAmount = day1SV * ltvRatio;
+            const netPremium = basicPremium * (1 - premiumDiscount); 
+            const initialOutlayPF = netPremium - financingAmount;
+            const initialOutlayNoPF = netPremium;
+
+            document.getElementById('displayFinancing').innerText = formatCurrency(financingAmount);
+            document.getElementById('displayOutlay').innerText = formatCurrency(initialOutlayPF);
+
+            const tableBody = document.getElementById('dataTableBody');
+            tableBody.innerHTML = '';
+            
+            let totalInterestPaid = 0;
+            const chartLabels = [];
+            const chartNetProfit = [];
+            const chartGrossReturn = []; 
+
+            // Get rate for chart data conversion
+            const rate = getCurrencyRate();
+
+            for (let year = 0; year <= 10; year++) {
+                const currentRateVal = yearlyRates[year === 0 ? 1 : year];
+                const annualInterest = financingAmount * (currentRateVal / 100);
+                const monthlyInterest = annualInterest / 12; // 計算月利息
+
+                let baseSV = year === 0 ? 0 : basicPremium * svRatios[year];
+
+                if (year > 0) totalInterestPaid += annualInterest;
+
+                const adjustedSV = baseSV * fulfillment;
+                const grossReturn = year === 0 ? 0 : (adjustedSV - financingAmount);
+                const netProfit = year === 0 ? 0 : (grossReturn - initialOutlayPF - totalInterestPaid);
+                const roi = year === 0 ? 0 : (netProfit / initialOutlayPF);
+                
+                // TIRR (With PF)
+                let displayTIRR_PF = "-";
+                if (year > 0) {
+                    let tempFlows = [-initialOutlayPF];
+                    for (let k = 1; k < year; k++) {
+                        const pastRate = yearlyRates[k] / 100;
+                        tempFlows.push(-(financingAmount * pastRate)); 
+                    }
+                    tempFlows.push(grossReturn - annualInterest);
+                    const calculatedTIRR_PF = calculateIRR(tempFlows);
+                    displayTIRR_PF = isFinite(calculatedTIRR_PF) ? formatPercent(calculatedTIRR_PF) : "-";
+                }
+
+                // TIRR (No PF)
+                let displayTIRR_NoPF = "-";
+                if (year > 0) {
+                    let tirrNoPF = Math.pow(adjustedSV / initialOutlayNoPF, 1 / year) - 1;
+                    displayTIRR_NoPF = isFinite(tirrNoPF) ? formatPercent(tirrNoPF) : "-";
+                }
+
+                if (year >= 0) {
+                    chartLabels.push(`Y${year}`);
+                    chartNetProfit.push(netProfit * rate); // Convert for Chart
+                    chartGrossReturn.push(grossReturn * rate); // Convert for Chart
+                }
+
+                if (year === 10) {
+                    document.getElementById('displayYear10Profit').innerText = formatCurrency(netProfit);
+                }
+
+                const row = document.createElement('tr');
+                row.className = 'border-t border-slate-800 hover:bg-slate-800/50 transition-colors';
+                if (year >= 5) row.classList.add('profit-row');
+
+                // 利息顯示 HTML (年/月)
+                let interestDisplay = '-';
+                if (year > 0) {
+                    interestDisplay = `
+                        <div>${formatCurrency(annualInterest)}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">${formatCurrency(monthlyInterest)} /mo</div>
+                    `;
+                }
+
+                row.innerHTML = `
+                    <td class="px-3 py-3 font-semibold text-slate-400 sticky left-0 bg-[#12161d] border-r border-slate-700/50 text-sm">${year}</td>
+                    <td class="px-3 py-3 text-right text-teal-400/70 text-sm font-semibold">${year === 0 ? '-' : currentRateVal.toFixed(2)+'%'}</td>
+                    <td class="px-3 py-3 text-right text-slate-400 text-sm font-semibold leading-tight">${interestDisplay}</td>
+                    <td class="px-3 py-3 text-right font-bold text-white text-sm">${year === 0 ? '-' : formatCurrency(adjustedSV)}</td>
+                    <td class="px-3 py-3 text-right text-sm font-semibold border-l border-slate-700/50 ${parseFloat(displayTIRR_NoPF) >= 0 ? 'text-slate-300' : 'text-slate-500'}">${displayTIRR_NoPF}</td>
+                    <td class="px-3 py-3 text-right font-bold text-sm ${parseFloat(displayTIRR_PF) >= 0 ? 'text-amber-400' : 'negative-text'}">${displayTIRR_PF}</td>
+                    <td class="px-3 py-3 text-right font-bold text-sm text-amber-300">${year === 0 ? '-' : formatCurrency(grossReturn)}</td>
+                    <td class="px-3 py-3 text-right text-sm font-semibold ${netProfit >= 0 ? 'highlight-text' : 'negative-text'}">${year === 0 ? '-' : formatCurrency(netProfit)}</td>
+                    <td class="px-3 py-3 text-right font-bold text-sm ${roi >= 0 ? 'highlight-text' : 'negative-text'}">${year === 0 ? '-' : (roi * 100).toFixed(1) + '%'}</td>
+                `;
+                tableBody.appendChild(row);
+            }
+            updateChart(chartLabels, chartNetProfit, chartGrossReturn);
+        }
+
+        function updateChart(labels, netProfitData, grossReturnData) {
+            const ctx = document.getElementById('wealthChart').getContext('2d');
+            if (wealthChart) wealthChart.destroy();
+            
+            // Determine label based on currency
+            const currencyLabel = currentCurrency === 'HKD' ? 'HKD' : 'USD';
+
+            wealthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: `淨利潤 (${currencyLabel})`,
+                            data: netProfitData,
+                            borderColor: '#2dd4bf', 
+                            backgroundColor: 'rgba(45, 212, 191, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 3
+                        },
+                        {
+                            label: `可提取金額 (${currencyLabel})`,
+                            data: grossReturnData,
+                            borderColor: '#f59e0b',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#cbd5e1',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + new Intl.NumberFormat('en-US', { style: 'currency', currency: currentCurrency === 'HKD' ? 'HKD' : 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b' } },
+                        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', callback: function(value) { return value >= 1000 || value <= -1000 ? value/1000 + 'k' : value; } } }
+                    }
+                }
+            });
+        }
+
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('input', calculate);
+        });
+        
+        loadState();
+        initYearlyRateInputs();
+        calculate();
+    </script>
+</body>
+</html>
